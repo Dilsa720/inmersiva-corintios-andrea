@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>II Corintios · Diorama Espacial Interactivo</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(125,211,252,.46), transparent 32%),
+        radial-gradient(circle at 90% 20%, rgba(251,191,36,.35), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(244,114,182,.25), transparent 35%),
+        #f7fbff;
+      color: #172554;
+    }
+
+    body {
+      min-height: 100dvh;
+      overscroll-behavior: none;
+    }
+
+    button {
+      touch-action: manipulation;
+    }
+
+    .app-shell {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stage-wrapper {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 10px 90px;
+      overflow: hidden;
+    }
+
+    .perspective-stage {
+      width: min(1180px, 96vw);
+      height: min(690px, 72dvh);
+      min-height: 430px;
+      perspective: 1500px;
+      perspective-origin: 50% 45%;
+      position: relative;
+    }
+
+    .room {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transition: transform .13s linear;
+      will-change: transform;
+    }
+
+    .room-face {
+      position: absolute;
+      overflow: hidden;
+      backface-visibility: hidden;
+    }
+
+    .back-wall {
+      inset: 4% 5% 12%;
+      border-radius: 34px;
+      transform: translateZ(-180px);
+      border: 2px solid rgba(255,255,255,.9);
+      box-shadow:
+        inset 0 0 90px rgba(59,130,246,.16),
+        0 40px 70px rgba(30,64,175,.15);
+    }
+
+    .left-wall {
+      left: -14%;
+      top: 4%;
+      width: 19%;
+      height: 84%;
+      transform-origin: right center;
+      transform: rotateY(78deg) translateZ(-17px);
+      border-radius: 24px 0 0 24px;
+      opacity: .82;
+    }
+
+    .right-wall {
+      right: -14%;
+      top: 4%;
+      width: 19%;
+      height: 84%;
+      transform-origin: left center;
+      transform: rotateY(-78deg) translateZ(-17px);
+      border-radius: 0 24px 24px 0;
+      opacity: .82;
+    }
+
+    .floor {
+      left: 5%;
+      right: 5%;
+      bottom: -18%;
+      height: 31%;
+      transform-origin: top center;
+      transform: rotateX(75deg) translateZ(-5px);
+      border-radius: 0 0 40px 40px;
+      background:
+        linear-gradient(rgba(37,99,235,.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,.16) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,.86), rgba(219,234,254,.65));
+      background-size: 34px 34px, 34px 34px, 100% 100%;
+      box-shadow: inset 0 40px 80px rgba(255,255,255,.7);
+    }
+
+    .ceiling-light {
+      position: absolute;
+      top: 2%;
+      left: 50%;
+      width: 54%;
+      height: 8px;
+      transform: translateX(-50%) translateZ(20px);
+      border-radius: 999px;
+      filter: blur(.2px);
+      box-shadow: 0 0 22px currentColor, 0 0 52px currentColor;
+    }
+
+    .slide-layer {
+      position: absolute;
+      inset: 7% 8% 15%;
+      transform-style: preserve-3d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 1.12fr .88fr;
+      gap: clamp(16px, 3vw, 38px);
+      align-items: center;
+      padding: clamp(20px, 4vw, 56px);
+      border-radius: 32px;
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      transform:
+        translateZ(-100px)
+        translateY(20px)
+        rotateX(4deg)
+        scale(.96);
+      transition:
+        opacity .55s ease,
+        transform .65s cubic-bezier(.2,.8,.2,1),
+        visibility .55s;
+      border: 1px solid rgba(255,255,255,.94);
+      box-shadow:
+        0 28px 65px rgba(30,64,175,.16),
+        inset 0 0 0 1px rgba(255,255,255,.56);
+      backdrop-filter: blur(10px);
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform:
+        translateZ(70px)
+        translateY(0)
+        rotateX(0deg)
+        scale(1);
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      right: -110px;
+      top: -110px;
+      background: currentColor;
+      opacity: .09;
+      filter: blur(4px);
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      left: -100px;
+      bottom: -115px;
+      background: currentColor;
+      opacity: .08;
+    }
+
+    .slide-copy {
+      position: relative;
+      z-index: 3;
+      transform: translateZ(85px);
+    }
+
+    .visual-panel {
+      min-height: 330px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: translateZ(120px);
+      z-index: 3;
+    }
+
+    .floating-art {
+      width: min(330px, 100%);
+      aspect-ratio: 1 / 1;
+      border-radius: 34px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      transform-style: preserve-3d;
+      animation: floatArt 4.5s ease-in-out infinite;
+      border: 1px solid rgba(255,255,255,.84);
+      box-shadow:
+        0 25px 55px rgba(15,23,42,.12),
+        inset 0 0 44px rgba(255,255,255,.52);
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .floating-art::before {
+      content: "";
+      position: absolute;
+      inset: 10%;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.72);
+      box-shadow:
+        0 0 0 12px rgba(255,255,255,.12),
+        0 0 0 24px rgba(255,255,255,.07);
+      animation: spinOrb 14s linear infinite;
+    }
+
+    .floating-art::after {
+      content: "";
+      position: absolute;
+      width: 85%;
+      height: 40%;
+      left: 8%;
+      top: -25%;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,.58), transparent);
+      transform: rotate(18deg);
+      animation: scan 4s linear infinite;
+    }
+
+    .art-icon {
+      font-size: clamp(86px, 11vw, 150px);
+      position: relative;
+      z-index: 4;
+      filter: drop-shadow(0 18px 18px rgba(30,41,59,.16));
+      transform: translateZ(60px);
+      transition: transform .25s ease;
+    }
+
+    .floating-art:active .art-icon,
+    .floating-art.clicked .art-icon {
+      transform: translateZ(95px) scale(1.12) rotate(-4deg);
+    }
+
+    .orbit-dot {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: white;
+      box-shadow: 0 0 20px currentColor;
+      animation: orbit 6s linear infinite;
+    }
+
+    .orbit-dot:nth-child(2) {
+      animation-duration: 8s;
+      animation-delay: -2s;
+      width: 10px;
+      height: 10px;
+    }
+
+    .orbit-dot:nth-child(3) {
+      animation-duration: 10s;
+      animation-delay: -4s;
+      width: 13px;
+      height: 13px;
+    }
+
+    .keyword {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(255,255,255,.9);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 20px rgba(15,23,42,.07);
+    }
+
+    .slide-number {
+      font-weight: 950;
+      letter-spacing: .08em;
+      font-size: 12px;
+      opacity: .7;
+      margin-bottom: 8px;
+    }
+
+    .slide-title {
+      margin: 14px 0 10px;
+      font-weight: 950;
+      line-height: .98;
+      font-size: clamp(31px, 5vw, 64px);
+      letter-spacing: -.04em;
+      max-width: 780px;
+    }
+
+    .slide-subtitle {
+      font-size: clamp(16px, 2vw, 23px);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .slide-text {
+      font-size: clamp(14px, 1.55vw, 18px);
+      line-height: 1.58;
+      max-width: 700px;
+      color: #334155;
+      font-weight: 600;
+    }
+
+    .verse {
+      margin-top: 18px;
+      padding: 14px 18px;
+      background: rgba(255,255,255,.58);
+      border-left: 5px solid currentColor;
+      border-radius: 0 18px 18px 0;
+      font-weight: 850;
+      font-size: clamp(14px, 1.7vw, 19px);
+      box-shadow: 0 14px 28px rgba(15,23,42,.07);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      padding: 8px 12px;
+      border-radius: 13px;
+      background: rgba(255,255,255,.76);
+      border: 1px solid rgba(255,255,255,.95);
+      font-size: 13px;
+      font-weight: 850;
+      box-shadow: 0 8px 18px rgba(15,23,42,.06);
+      transition: transform .2s ease, box-shadow .2s ease;
+      cursor: default;
+    }
+
+    .chip:hover {
+      transform: translateY(-4px) translateZ(30px);
+      box-shadow: 0 14px 25px rgba(15,23,42,.1);
+    }
+
+    .fact-button {
+      margin-top: 18px;
+      padding: 10px 15px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.85);
+      background: rgba(255,255,255,.74);
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(15,23,42,.07);
+      transition: transform .2s ease;
+    }
+
+    .fact-button:hover {
+      transform: translateY(-3px);
+    }
+
+    .mini-fact {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height .35s ease, opacity .35s ease, margin .35s ease;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .mini-fact.show {
+      max-height: 120px;
+      opacity: 1;
+      margin-top: 10px;
+    }
+
+    .hud {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(1100px, calc(100vw - 20px));
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .hud > * {
+      pointer-events: auto;
+    }
+
+    .hud-card {
+      background: rgba(255,255,255,.83);
+      border: 1px solid rgba(255,255,255,.94);
+      backdrop-filter: blur(15px);
+      box-shadow: 0 12px 28px rgba(30,64,175,.12);
+      border-radius: 18px;
+    }
+
+    .timer-ring {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      font-size: 12px;
+      background:
+        conic-gradient(var(--accent, #2563eb) calc(var(--progress) * 1%), rgba(226,232,240,.8) 0);
+      position: relative;
+    }
+
+    .timer-ring::before {
+      content: "";
+      width: 33px;
+      height: 33px;
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.95);
+    }
+
+    .timer-ring span {
+      position: relative;
+      z-index: 2;
+    }
+
+    .controls {
+      position: fixed;
+      z-index: 60;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(1080px, calc(100vw - 20px));
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ctrl {
+      min-width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 17px;
+      background: rgba(255,255,255,.9);
+      color: #172554;
+      font-size: 20px;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 0 12px 25px rgba(30,64,175,.13);
+      border: 1px solid rgba(255,255,255,.95);
+      backdrop-filter: blur(14px);
+      transition: transform .2s ease;
+    }
+
+    .ctrl:active {
+      transform: scale(.94);
+    }
+
+    .progress-card {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 14px;
+      border-radius: 17px;
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 12px 25px rgba(30,64,175,.13);
+      border: 1px solid rgba(255,255,255,.95);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .progress-track {
+      height: 8px;
+      background: rgba(148,163,184,.26);
+      flex: 1;
+      border-radius: 999px;
+      overflow: hidden;
+      min-width: 50px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 5%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2563eb, #7c3aed, #ec4899);
+      transition: width .4s ease;
+    }
+
+    .progress-label {
+      white-space: nowrap;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .slide-dots {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
+      max-width: 320px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(100,116,139,.28);
+      padding: 0;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+
+    .dot.active {
+      width: 22px;
+      background: var(--accent, #2563eb);
+    }
+
+    .hint {
+      position: absolute;
+      right: 15px;
+      bottom: 12px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.55);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      z-index: 8;
+    }
+
+    .spark {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      opacity: .64;
+      animation: twinkle 2.5s ease-in-out infinite;
+    }
+
+    @keyframes floatArt {
+      0%,100% { transform: translateY(0) rotateY(-5deg) rotateX(2deg); }
+      50% { transform: translateY(-14px) rotateY(5deg) rotateX(-2deg); }
+    }
+
+    @keyframes scan {
+      0% { transform: translateY(-80%) rotate(18deg); }
+      100% { transform: translateY(420%) rotate(18deg); }
+    }
+
+    @keyframes spinOrb {
+      from { transform: rotate(0deg) scale(.96); }
+      to { transform: rotate(360deg) scale(.96); }
+    }
+
+    @keyframes orbit {
+      0% { transform: rotate(0deg) translateX(130px) rotate(0deg); }
+      100% { transform: rotate(360deg) translateX(130px) rotate(-360deg); }
+    }
+
+    @keyframes twinkle {
+      0%,100% { opacity: .25; transform: scale(.7); }
+      50% { opacity: .8; transform: scale(1.25); }
+    }
+
+    @media (max-width: 780px) {
+      .stage-wrapper {
+        align-items: flex-start;
+        padding: 68px 7px 86px;
+        overflow-y: auto;
+      }
+
+      .perspective-stage {
+        width: 100%;
+        height: auto;
+        min-height: 690px;
+        perspective: 1100px;
+      }
+
+      .room {
+        position: relative;
+        min-height: 690px;
+      }
+
+      .back-wall {
+        inset: 0;
+        border-radius: 26px;
+        transform: translateZ(-110px);
+      }
+
+      .left-wall,
+      .right-wall,
+      .floor {
+        opacity: .46;
+      }
+
+      .slide-layer {
+        inset: 16px 12px 28px;
+      }
+
+      .slide {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        align-content: center;
+        gap: 12px;
+        padding: 20px 18px 24px;
+        overflow-y: auto;
+        max-height: 640px;
+        border-radius: 24px;
+      }
+
+      .slide-title {
+        margin-top: 10px;
+        font-size: clamp(29px, 9vw, 42px);
+      }
+
+      .slide-subtitle {
+        font-size: 17px;
+      }
+
+      .slide-text {
+        font-size: 14px;
+      }
+
+      .verse {
+        margin-top: 12px;
+        font-size: 14px;
+        padding: 11px 13px;
+      }
+
+      .chips {
+        margin-top: 12px;
+      }
+
+      .chip {
+        font-size: 11px;
+        padding: 6px 9px;
+      }
+
+      .visual-panel {
+        min-height: 185px;
+      }
+
+      .floating-art {
+        width: 185px;
+        max-width: 55vw;
+        border-radius: 26px;
+      }
+
+      .art-icon {
+        font-size: 72px;
+      }
+
+      .slide-copy {
+        transform: translateZ(35px);
+      }
+
+      .visual-panel {
+        transform: translateZ(50px);
+      }
+
+      .orbit-dot {
+        display: none;
+      }
+
+      .hud {
+        top: 7px;
+      }
+
+      .hud-card.brand {
+        max-width: 64vw;
+      }
+
+      .hud-title {
+        font-size: 11px !important;
+      }
+
+      .hud-sub {
+        font-size: 9px !important;
+      }
+
+      .slide-dots {
+        display: none;
+      }
+
+      .controls {
+        bottom: 8px;
+        gap: 7px;
+      }
+
+      .ctrl {
+        min-width: 46px;
+        width: 46px;
+        height: 46px;
+      }
+
+      .progress-card {
+        height: 46px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+
+    @media (max-height: 650px) and (min-width: 781px) {
+      .perspective-stage {
+        height: 76dvh;
+        min-height: 390px;
+      }
+
+      .slide {
+        padding: 24px 34px;
+      }
+
+      .floating-art {
+        width: 260px;
+      }
+
+      .slide-title {
+        font-size: clamp(30px, 4vw, 50px);
+      }
+
+      .slide-text {
+        font-size: 14px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app-shell">
+
+  <header class="hud">
+    <div class="hud-card brand flex items-center gap-3 px-3 py-2">
+      <div id="brandIcon" class="w-9 h-9 rounded-xl grid place-items-center text-xl bg-blue-100">📖</div>
+      <div class="min-w-0">
+        <div class="hud-title text-xs font-black tracking-wide truncate">II CORINTIOS</div>
+        <div class="hud-sub text-[10px] font-bold text-slate-500 truncate">
+          Fortaleza en las dificultades · Andrea
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button
+        id="autoBtn"
+        class="hud-card px-3 h-11 text-xs font-black"
+        aria-label="Activar o detener modo PechaKucha"
+        title="Modo PechaKucha: 20 segundos por diapositiva"
+      >
+        ▶ 20s
+      </button>
+
+      <div class="hud-card p-1.5">
+        <div id="timerRing" class="timer-ring" style="--progress:100;--accent:#2563eb;">
+          <span id="timerText">20</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage-wrapper">
+    <div id="stage" class="perspective-stage">
+      <div id="room" class="room">
+
+        <div id="backWall" class="room-face back-wall"></div>
+        <div id="leftWall" class="room-face left-wall"></div>
+        <div id="rightWall" class="room-face right-wall"></div>
+        <div class="room-face floor"></div>
+        <div id="ceilingLight" class="ceiling-light"></div>
+
+        <div id="slideLayer" class="slide-layer"></div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="controls" aria-label="Controles de diapositivas">
+    <button id="prevBtn" class="ctrl" aria-label="Diapositiva anterior">←</button>
+
+    <div class="progress-card">
+      <div class="progress-label">
+        <span id="currentNum">01</span>/<span id="totalNum">20</span>
+      </div>
+
+      <div class="progress-track">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+
+      <div id="slideDots" class="slide-dots"></div>
+    </div>
+
+    <button id="nextBtn" class="ctrl" aria-label="Siguiente diapositiva">→</button>
+  </nav>
+
+</div>
+
+<script>
+  const slides = [
+    {
+      title: "II Corintios",
+      subtitle: "Fortaleza en las dificultades",
+      text: "Una carta profundamente personal en la que Pablo habla de fe, consuelo, reconciliación, generosidad y esperanza.",
+      keyword: "Inicio",
+      chips: ["Pablo", "Corinto", "Fe"],
+      icon: "📜",
+      fact: "La exposición está organizada en 20 ideas clave, siguiendo el formato PechaKucha.",
+      verse: "Una historia de debilidad humana sostenida por la gracia de Dios.",
+      colors: ["#dbeafe","#cffafe","#bfdbfe","#2563eb"]
+    },
+    {
+      title: "Corinto",
+      subtitle: "Una ciudad importante del siglo I",
+      text: "Corinto estaba en Grecia. Era una ciudad rica, comercial y cosmopolita, donde convivían personas de diferentes culturas y creencias.",
+      keyword: "Contexto",
+      chips: ["Grecia", "Siglo I", "Comercio"],
+      icon: "🏛️",
+      fact: "La diversidad de Corinto también producía tensiones dentro de la comunidad cristiana.",
+      verse: "Un lugar desafiante para aprender a vivir la fe.",
+      colors: ["#fef3c7","#ffedd5","#fde68a","#f59e0b"]
+    },
+    {
+      title: "¿Quién escribió?",
+      subtitle: "El apóstol Pablo",
+      text: "Pablo había ayudado a formar la comunidad cristiana de Corinto. Por eso habla con cercanía, preocupación y una fuerte responsabilidad pastoral.",
+      keyword: "Autor",
+      chips: ["Apóstol", "Pastor", "Misionero"],
+      icon: "✍️",
+      fact: "Pablo conocía personalmente a la comunidad y había mantenido comunicación con ella.",
+      verse: "Su mensaje combina corrección, afecto y enseñanza.",
+      colors: ["#dcfce7","#d1fae5","#bbf7d0","#16a34a"]
+    },
+    {
+      title: "¿A quién escribe?",
+      subtitle: "A los cristianos de Corinto",
+      text: "Era una comunidad diversa: judíos, griegos, esclavos y libres. Compartían la misma fe, pero todavía enfrentaban conflictos y divisiones.",
+      keyword: "Comunidad",
+      chips: ["Diversidad", "Conflictos", "Unidad"],
+      icon: "👥",
+      fact: "La carta busca fortalecer las relaciones de una comunidad que todavía estaba aprendiendo a vivir unida.",
+      verse: "La fe debía convertirse también en una nueva forma de convivir.",
+      colors: ["#fce7f3","#fae8ff","#fbcfe8","#db2777"]
+    },
+    {
+      title: "Una relación complicada",
+      subtitle: "Problemas, críticas y reconciliación",
+      text: "Algunas personas cuestionaban la autoridad de Pablo. Después de momentos difíciles, la relación comenzó a restaurarse.",
+      keyword: "Conflicto",
+      chips: ["Críticas", "Dolor", "Reencuentro"],
+      icon: "🤝",
+      fact: "II Corintios refleja una relación real: hubo tensión, corrección, dolor y finalmente búsqueda de reconciliación.",
+      verse: "Las relaciones pueden sanar cuando existe verdad, perdón y voluntad de cambiar.",
+      colors: ["#fee2e2","#ffedd5","#fecaca","#dc2626"]
+    },
+    {
+      title: "¿Por qué escribió?",
+      subtitle: "Explicar, corregir y fortalecer",
+      text: "Pablo escribe desde Macedonia para aclarar sus acciones, responder críticas y animar a la comunidad a permanecer firme en la fe.",
+      keyword: "Propósito",
+      chips: ["Explicar", "Corregir", "Fortalecer"],
+      icon: "🧭",
+      fact: "La carta no solo responde problemas: también enseña cómo enfrentarlos con madurez.",
+      verse: "Una comunidad fuerte necesita verdad, orientación y esperanza.",
+      colors: ["#e0e7ff","#dbeafe","#c7d2fe","#4f46e5"]
+    },
+    {
+      title: "Dios nos consuela",
+      subtitle: "El consuelo se comparte",
+      text: "Pablo presenta a Dios como fuente de consuelo. Quien recibe consuelo puede convertirse después en apoyo para otra persona.",
+      keyword: "Consuelo",
+      chips: ["Acompañar", "Escuchar", "Ayudar"],
+      icon: "🫶",
+      fact: "Para Pablo, el consuelo no termina en uno mismo: debe multiplicarse hacia quienes también sufren.",
+      verse: "«Padre de las misericordias y Dios de todo consuelo» · 2 Co 1:3",
+      colors: ["#cffafe","#dbeafe","#a5f3fc","#0891b2"]
+    },
+    {
+      title: "Las pruebas enseñan",
+      subtitle: "La dificultad también puede formar",
+      text: "Pablo había enfrentado persecución, rechazo y sufrimiento. Sin embargo, esas experiencias no destruyeron su misión.",
+      keyword: "Resiliencia",
+      chips: ["Aprender", "Crecer", "Perseverar"],
+      icon: "⛰️",
+      fact: "Pablo interpreta sus dificultades como experiencias que profundizan la fe y fortalecen el carácter.",
+      verse: "Una dificultad puede convertirse en aprendizaje cuando no dejamos de avanzar.",
+      colors: ["#ecfccb","#dcfce7","#d9f99d","#65a30d"]
+    },
+    {
+      title: "Perdonar",
+      subtitle: "Restaurar en lugar de destruir",
+      text: "Pablo invita a perdonar a quien había causado daño. El objetivo de la corrección no debía ser humillar, sino recuperar a la persona.",
+      keyword: "Perdón",
+      chips: ["Reconocer", "Perdonar", "Restaurar"],
+      icon: "💞",
+      fact: "El perdón cristiano no significa ignorar el error: busca superar el daño y reconstruir la relación.",
+      verse: "El perdón puede convertirse en una forma de valentía.",
+      colors: ["#fae8ff","#fce7f3","#e9d5ff","#9333ea"]
+    },
+    {
+      title: "Una nueva alianza",
+      subtitle: "La transformación comienza dentro",
+      text: "Pablo contrasta la ley escrita externamente con una vida transformada interiormente por el Espíritu.",
+      keyword: "Transformación",
+      chips: ["Corazón", "Espíritu", "Cambio"],
+      icon: "❤️",
+      fact: "La idea central es que la fe no debe quedarse en normas externas: debe influir en la manera de pensar y actuar.",
+      verse: "«La letra mata, pero el Espíritu vivifica» · 2 Co 3:6",
+      colors: ["#ffe4e6","#fce7f3","#fecdd3","#e11d48"]
+    },
+    {
+      title: "Vasos de barro",
+      subtitle: "Frágiles por fuera, valiosos por dentro",
+      text: "Pablo compara a las personas con vasijas de barro: pueden ser frágiles, pero llevan un tesoro extraordinario.",
+      keyword: "Fragilidad",
+      chips: ["Tesoro", "Humildad", "Poder"],
+      icon: "🏺",
+      fact: "La imagen del barro recuerda que el valor del mensaje no depende de la perfección humana.",
+      verse: "«Tenemos este tesoro en vasos de barro» · 2 Co 4:7",
+      colors: ["#ffedd5","#fef3c7","#fed7aa","#ea580c"]
+    },
+    {
+      title: "No rendirse",
+      subtitle: "Golpeados, pero no destruidos",
+      text: "Pablo reconoce que existen momentos difíciles. Su respuesta no es negar el dolor, sino mantener la esperanza y seguir adelante.",
+      keyword: "Perseverancia",
+      chips: ["Resistir", "Esperar", "Continuar"],
+      icon: "🔥",
+      fact: "La perseverancia cristiana no significa que nada duela; significa que el dolor no tiene la última palabra.",
+      verse: "«Derribados, pero no destruidos» · 2 Co 4:9",
+      colors: ["#fef9c3","#ffedd5","#fde68a","#ca8a04"]
+    },
+    {
+      title: "Somos embajadores",
+      subtitle: "Representar con palabras y acciones",
+      text: "Pablo compara a los creyentes con embajadores: personas enviadas para representar el mensaje de Cristo ante los demás.",
+      keyword: "Misión",
+      chips: ["Representar", "Servir", "Comunicar"],
+      icon: "🌍",
+      fact: "Un embajador representaba públicamente la autoridad de quien lo enviaba; por eso su conducta era importante.",
+      verse: "«Somos embajadores en nombre de Cristo» · 2 Co 5:20",
+      colors: ["#dbeafe","#e0f2fe","#bae6fd","#0284c7"]
+    },
+    {
+      title: "Reconciliación",
+      subtitle: "Volver a unir lo que se rompió",
+      text: "Pablo presenta la reconciliación como una misión activa: sanar relaciones, buscar la paz y comenzar de nuevo.",
+      keyword: "Paz",
+      chips: ["Unir", "Restaurar", "Nueva creación"],
+      icon: "🕊️",
+      fact: "La reconciliación implica iniciativa: no basta con evitar el conflicto, también hay que trabajar por restaurar la relación.",
+      verse: "«Si alguno está en Cristo, nueva criatura es» · 2 Co 5:17",
+      colors: ["#ccfbf1","#dcfce7","#a7f3d0","#059669"]
+    },
+    {
+      title: "La generosidad",
+      subtitle: "Dar con alegría",
+      text: "Pablo organizó una colecta para ayudar a personas necesitadas en Jerusalén. La solidaridad se convirtió en una expresión concreta de la fe.",
+      keyword: "Compartir",
+      chips: ["Generosidad", "Solidaridad", "Alegría"],
+      icon: "🎁",
+      fact: "Las comunidades colaboraban incluso estando en ciudades diferentes: la ayuda atravesaba distancias y fronteras.",
+      verse: "«Dios ama al dador alegre» · 2 Co 9:7",
+      colors: ["#fef3c7","#ecfccb","#fde68a","#d97706"]
+    },
+    {
+      title: "Ayudar a los demás",
+      subtitle: "La fe también se demuestra con hechos",
+      text: "Compartir tiempo, recursos y ayuda muestra que la fe no es solamente una idea. Se convierte en acción cuando responde a necesidades reales.",
+      keyword: "Servicio",
+      chips: ["Ayudar", "Compartir", "Actuar"],
+      icon: "🤲",
+      fact: "Pablo promovió una red de comunidades que se apoyaban unas a otras más allá de sus diferencias.",
+      verse: "La solidaridad transforma una creencia en una acción visible.",
+      colors: ["#e0f2fe","#cffafe","#bfdbfe","#0ea5e9"]
+    },
+    {
+      title: "Pablo fue criticado",
+      subtitle: "Defendió su misión de una forma inesperada",
+      text: "Algunos predicadores rivales cuestionaban a Pablo. Él no respondió presumiendo de poder, sino mostrando sus dificultades y sacrificios.",
+      keyword: "Sinceridad",
+      chips: ["Críticas", "Defensa", "Misión"],
+      icon: "🛡️",
+      fact: "Pablo convierte su aparente debilidad en un argumento: su misión no dependía de aparentar grandeza.",
+      verse: "La autenticidad puede tener más fuerza que las apariencias.",
+      colors: ["#ede9fe","#e0e7ff","#ddd6fe","#7c3aed"]
+    },
+    {
+      title: "La verdadera fortaleza",
+      subtitle: "La gracia también actúa en la debilidad",
+      text: "Pablo habla de un «aguijón» que no desapareció. Aprende que no necesita ser perfecto para que Dios actúe en su vida.",
+      keyword: "Gracia",
+      chips: ["Límites", "Confianza", "Fortaleza"],
+      icon: "💡",
+      fact: "Pablo pidió varias veces que su dificultad desapareciera, pero terminó descubriendo otra forma de entender la fortaleza.",
+      verse: "«Mi poder se perfecciona en la debilidad» · 2 Co 12:9",
+      colors: ["#f3e8ff","#fae8ff","#e9d5ff","#a855f7"]
+    },
+    {
+      title: "¿Qué enseña hoy?",
+      subtitle: "Una fe que ayuda a enfrentar la vida",
+      text: "II Corintios invita a perdonar, ayudar, perseverar, acompañar y reconocer que también podemos crecer durante las dificultades.",
+      keyword: "Aplicación",
+      chips: ["Perdonar", "Ayudar", "Perseverar"],
+      icon: "🌱",
+      fact: "El mensaje de la carta conecta la fe con decisiones concretas que afectan nuestras relaciones y nuestra forma de vivir.",
+      verse: "La fe no elimina todos los problemas; puede dar sentido, dirección y esperanza.",
+      colors: ["#dcfce7","#ecfccb","#d9f99d","#22c55e"]
+    },
+    {
+      title: "Mensaje final",
+      subtitle: "Fe · Amor · Esperanza",
+      text: "II Corintios muestra que una persona puede ser frágil y, al mismo tiempo, mantenerse firme. La dificultad no tiene que ser el final de la historia.",
+      keyword: "Cierre",
+      chips: ["Fe", "Amor", "Esperanza"],
+      icon: "✨",
+      fact: "La idea que une toda la presentación es sencilla: la verdadera fortaleza puede aparecer precisamente cuando reconocemos nuestras limitaciones.",
+      verse: "II Corintios · Presentado por Andrea",
+      colors: ["#dbeafe","#fae8ff","#fef3c7","#2563eb"]
+    }
+  ];
+
+  const slideLayer = document.getElementById("slideLayer");
+  const progressBar = document.getElementById("progressBar");
+  const currentNum = document.getElementById("currentNum");
+  const totalNum = document.getElementById("totalNum");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const slideDots = document.getElementById("slideDots");
+  const backWall = document.getElementById("backWall");
+  const leftWall = document.getElementById("leftWall");
+  const rightWall = document.getElementById("rightWall");
+  const ceilingLight = document.getElementById("ceilingLight");
+  const room = document.getElementById("room");
+  const stage = document.getElementById("stage");
+  const timerText = document.getElementById("timerText");
+  const timerRing = document.getElementById("timerRing");
+  const autoBtn = document.getElementById("autoBtn");
+  const brandIcon = document.getElementById("brandIcon");
+
+  let currentSlide = 0;
+  let autoplay = false;
+  let secondsLeft = 20;
+  let timerInterval = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let targetRotX = 0;
+  let targetRotY = 0;
+  let currentRotX = 0;
+  let currentRotY = 0;
+
+  totalNum.textContent = slides.length;
+
+  function rgba(hex, alpha = 1) {
+    const clean = hex.replace("#", "");
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function renderSlides() {
+    slideLayer.innerHTML = slides.map((s, index) => `
+      <section
+        class="slide ${index === 0 ? "active" : ""}"
+        data-index="${index}"
+        style="
+          color:${s.colors[3]};
+          background:
+            radial-gradient(circle at 85% 20%, ${rgba(s.colors[3], .14)}, transparent 31%),
+            linear-gradient(135deg, ${s.colors[0]} 0%, rgba(255,255,255,.94) 46%, ${s.colors[1]} 100%);
+        "
+      >
+        <div class="slide-copy">
+          <div class="slide-number">DIAPOSITIVA ${String(index + 1).padStart(2,"0")}</div>
+
+          <span class="keyword">
+            <span>◆</span>
+            ${s.keyword}
+          </span>
+
+          <h1 class="slide-title">${s.title}</h1>
+          <div class="slide-subtitle">${s.subtitle}</div>
+          <p class="slide-text">${s.text}</p>
+
+          ${s.verse ? `<div class="verse">${s.verse}</div>` : ""}
+
+          <div class="chips">
+            ${s.chips.map(c => `<span class="chip">${c}</span>`).join("")}
+          </div>
+
+          <button
+            class="fact-button"
+            onclick="toggleFact(${index})"
+            aria-expanded="false"
+          >
+            💡 Descubrir un dato
+          </button>
+
+          <div id="fact-${index}" class="mini-fact">
+            ${s.fact}
+          </div>
+        </div>
+
+        <div class="visual-panel">
+          <div
+            class="floating-art"
+            onclick="pulseArt(this)"
+            style="
+              background:
+                radial-gradient(circle at 35% 25%, rgba(255,255,255,.9), transparent 28%),
+                linear-gradient(145deg, ${s.colors[1]}, ${s.colors[2]});
+              color:${s.colors[3]};
+            "
+          >
+            <span class="orbit-dot" style="color:${s.colors[3]}"></span>
+            <span class="orbit-dot" style="color:${s.colors[3]}"></span>
+            <span class="orbit-dot" style="color:${s.colors[3]}"></span>
+
+            <div class="art-icon">${s.icon}</div>
+
+            ${Array.from({length: 9}, (_, i) => `
+              <span
+                class="spark"
+                style="
+                  width:${3 + (i % 3)}px;
+                  height:${3 + (i % 3)}px;
+                  left:${10 + ((i * 19) % 78)}%;
+                  top:${8 + ((i * 27) % 79)}%;
+                  animation-delay:${(i * .18).toFixed(2)}s;
+                "
+              ></span>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="hint">Mueve el mouse · toca la ilustración</div>
+      </section>
+    `).join("");
+
+    slideDots.innerHTML = slides.map((_, index) => `
+      <button
+        class="dot ${index === 0 ? "active" : ""}"
+        onclick="goToSlide(${index})"
+        aria-label="Ir a la diapositiva ${index + 1}"
+      ></button>
+    `).join("");
+  }
+
+  function updateEnvironment(slide) {
+    const [c1, c2, c3, accent] = slide.colors;
+
+    backWall.style.background = `
+      radial-gradient(circle at 50% 30%, rgba(255,255,255,.96), transparent 46%),
+      linear-gradient(135deg, ${c1}, ${c2})
+    `;
+
+    leftWall.style.background = `linear-gradient(135deg, ${c3}, ${c1})`;
+    rightWall.style.background = `linear-gradient(225deg, ${c2}, ${c3})`;
+    ceilingLight.style.background = accent;
+    ceilingLight.style.color = accent;
+
+    timerRing.style.setProperty("--accent", accent);
+    document.documentElement.style.setProperty("--accent", accent);
+
+    brandIcon.style.background = c1;
+    brandIcon.textContent = slide.icon;
+  }
+
+  function updateSlide(resetTimer = true) {
+    document.querySelectorAll(".slide").forEach((el, i) => {
+      el.classList.toggle("active", i === currentSlide);
+    });
+
+    document.querySelectorAll(".dot").forEach((el, i) => {
+      el.classList.toggle("active", i === currentSlide);
+    });
+
+    const percentage = ((currentSlide + 1) / slides.length) * 100;
+    progressBar.style.width = `${percentage}%`;
+    currentNum.textContent = String(currentSlide + 1).padStart(2, "0");
+
+    updateEnvironment(slides[currentSlide]);
+
+    if (resetTimer) resetCountdown();
+  }
+
+  function nextSlide() {
+    if (currentSlide < slides.length - 1) {
+      currentSlide++;
+    } else {
+      currentSlide = 0;
+    }
+    updateSlide();
+  }
+
+  function prevSlideFn() {
+    currentSlide = currentSlide > 0 ? currentSlide - 1 : slides.length - 1;
+    updateSlide();
+  }
+
+  window.goToSlide = function(index) {
+    currentSlide = Math.max(0, Math.min(slides.length - 1, index));
+    updateSlide();
+  };
+
+  window.toggleFact = function(index) {
+    const fact = document.getElementById(`fact-${index}`);
+    const button = fact.previousElementSibling;
+    const willShow = !fact.classList.contains("show");
+
+    fact.classList.toggle("show", willShow);
+    button.setAttribute("aria-expanded", String(willShow));
+    button.textContent = willShow ? "✦ Ocultar dato" : "💡 Descubrir un dato";
+  };
+
+  window.pulseArt = function(element) {
+    element.classList.add("clicked");
+    setTimeout(() => element.classList.remove("clicked"), 420);
+  };
+
+  function resetCountdown() {
+    secondsLeft = 20;
+    updateTimerVisual();
+  }
+
+  function updateTimerVisual() {
+    timerText.textContent = secondsLeft;
+    const progress = (secondsLeft / 20) * 100;
+    timerRing.style.setProperty("--progress", progress);
+  }
+
+  function startAutoplay() {
+    autoplay = true;
+    autoBtn.textContent = "⏸ 20s";
+    autoBtn.title = "Detener modo PechaKucha";
+
+    clearInterval(timerInterval);
+    resetCountdown();
+
+    timerInterval = setInterval(() => {
+      secondsLeft--;
+
+      if (secondsLeft <= 0) {
+        nextSlide();
+        secondsLeft = 20;
+      }
+
+      updateTimerVisual();
+    }, 1000);
+  }
+
+  function stopAutoplay() {
+    autoplay = false;
+    clearInterval(timerInterval);
+    timerInterval = null;
+    autoBtn.textContent = "▶ 20s";
+    autoBtn.title = "Activar modo PechaKucha";
+    resetCountdown();
+  }
+
+  autoBtn.addEventListener("click", () => {
+    autoplay ? stopAutoplay() : startAutoplay();
+  });
+
+  nextBtn.addEventListener("click", nextSlide);
+  prevBtn.addEventListener("click", prevSlideFn);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "ArrowRight" || event.key === "PageDown") nextSlide();
+    if (event.key === "ArrowLeft" || event.key === "PageUp") prevSlideFn();
+
+    if (event.key === " ") {
+      event.preventDefault();
+      autoplay ? stopAutoplay() : startAutoplay();
+    }
+
+    if (event.key === "Home") {
+      currentSlide = 0;
+      updateSlide();
+    }
+
+    if (event.key === "End") {
+      currentSlide = slides.length - 1;
+      updateSlide();
+    }
+  });
+
+  stage.addEventListener("pointermove", event => {
+    if (window.innerWidth <= 780) return;
+
+    const rect = stage.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+
+    targetRotY = (x - .5) * 10;
+    targetRotX = (.5 - y) * 7;
+  });
+
+  stage.addEventListener("pointerleave", () => {
+    targetRotX = 0;
+    targetRotY = 0;
+  });
+
+  function animateCamera() {
+    currentRotX += (targetRotX - currentRotX) * .075;
+    currentRotY += (targetRotY - currentRotY) * .075;
+
+    room.style.transform =
+      `rotateX(${currentRotX.toFixed(2)}deg) rotateY(${currentRotY.toFixed(2)}deg)`;
+
+    requestAnimationFrame(animateCamera);
+  }
+
+  stage.addEventListener("touchstart", event => {
+    if (!event.touches.length) return;
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  stage.addEventListener("touchend", event => {
+    if (!event.changedTouches.length) return;
+
+    const dx = event.changedTouches[0].clientX - touchStartX;
+    const dy = event.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (dx < 0) nextSlide();
+      else prevSlideFn();
+    }
+  }, { passive: true });
+
+  function createAmbientParticles() {
+    for (let i = 0; i < 16; i++) {
+      const p = document.createElement("span");
+      p.className = "spark";
+      p.style.position = "absolute";
+      p.style.width = `${2 + (i % 4)}px`;
+      p.style.height = p.style.width;
+      p.style.left = `${4 + ((i * 23) % 90)}%`;
+      p.style.top = `${5 + ((i * 37) % 82)}%`;
+      p.style.animationDelay = `${i * .13}s`;
+      p.style.zIndex = "1";
+      backWall.appendChild(p);
+    }
+  }
+
+  renderSlides();
+  createAmbientParticles();
+  updateEnvironment(slides[0]);
+  updateTimerVisual();
+  animateCamera();
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth <= 780) {
+      targetRotX = 0;
+      targetRotY = 0;
+    }
+  });
+</script>
+</body>
+</html>
